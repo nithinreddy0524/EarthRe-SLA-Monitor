@@ -1,0 +1,55 @@
+{
+  "totalRows": 44652,
+  "fileBreakdown": {
+    "monitoring_checks_12d_seed505.csv": 6230,
+    "monitoring_checks_14d_seed202.csv": 7269,
+    "monitoring_checks_21d_seed303.csv": 10904,
+    "monitoring_checks_30d_seed404.csv": 15577,
+    "monitoring_checks_9d_seed101.csv": 4672
+  },
+  "services": [
+    "svc-payments",
+    "svc-search",
+    "svc-auth",
+    "svc-reports",
+    "svc-notify"
+  ],
+  "agents": [
+    "agent-1",
+    "agent-2"
+  ],
+  "regions": [
+    "ap-south-1"
+  ],
+  "statusCodes": {
+    "200": 44087,
+    "500": 191,
+    "502": 187,
+    "503": 182,
+    "999": 5
+  },
+  "latencyUnits": {
+    "ms": 35708,
+    "s": 8944
+  },
+  "missingLatencyCount": 533,
+  "negativeLatencyCount": 5,
+  "latencyInSecondsCount": 8834,
+  "latencyInMsCount": 35280,
+  "epochTimestampCount": 668,
+  "timezoneOffsetTimestampCount": 310,
+  "isoUtcTimestampCount": 43674,
+  "exactDuplicateRowsCount": 184,
+  "multiAgentSameTimestampCount": 17187,
+  "statusCode999Count": 5,
+  "missingValuesPerCol": {
+    "service_id": 0,
+    "service_name": 0,
+    "timestamp": 0,
+    "status_code": 0,
+    "latency": 533,
+    "latency_unit": 0,
+    "agent": 0,
+    "region": 0
+  }
+}
