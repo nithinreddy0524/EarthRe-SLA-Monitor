@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  EarthRe SLA Monitoring Dashboard - AWS SAM Backend Lambda & API Gateway
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs20.x
+    Environment:
+      Variables:
+        DATABASE_URL: !Ref DatabaseUrl
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    Default: postgresql://postgres:postgres@localhost:5432/earthre_sla_monitor
+    Description: PostgreSQL Database Connection String
+
+Resources:
+  EarthReApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/app.handler
+      Description: Lambda function for EarthRe SLA monitoring data pipeline and dashboard APIs
+      Events:
+        ApiRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+        ApiProxy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  EarthReApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
