@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Environment Files
+.env
+.env.local
+.env.production
+backend/.env.local
+
+# Build & SAM Output
+dist/
+build/
+.aws-sam/
