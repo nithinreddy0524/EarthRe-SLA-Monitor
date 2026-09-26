@@ -14,12 +14,14 @@ import {
 } from 'lucide-react';
 import { fetchHealth, fetchSlaStats } from './api';
 import CsvUploader from './components/CsvUploader';
+import LogsTable from './components/LogsTable';
 
 function App() {
   const [health, setHealth] = useState(null);
   const [loadingHealth, setLoadingHealth] = useState(true);
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [logsRefreshKey, setLogsRefreshKey] = useState(0);
 
   useEffect(() => {
     checkBackendHealth();
@@ -52,7 +54,10 @@ function App() {
 
   const handleUploadSuccess = () => {
     loadDashboardStats();
+    setLogsRefreshKey(prev => prev + 1);
   };
+
+  const hasData = stats?.summary?.totalChecks > 0;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900">
@@ -80,7 +85,7 @@ function App() {
               </span>
             </div>
             <button
-              onClick={() => { checkBackendHealth(); loadDashboardStats(); }}
+              onClick={() => { checkBackendHealth(); loadDashboardStats(); setLogsRefreshKey(prev => prev + 1); }}
               className="p-2 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-slate-600 hover:text-emerald-700 transition-all shadow-2xs"
               title="Refresh Connection & SLA Metrics"
             >
@@ -120,7 +125,7 @@ function App() {
               </div>
             </div>
             <div className="text-3xl font-extrabold text-slate-900 mb-1">
-              {stats?.summary?.globalAvailabilityPct !== undefined ? `${stats.summary.globalAvailabilityPct}%` : '-- %'}
+              {hasData && stats?.summary?.availabilityPercent !== undefined ? `${stats.summary.availabilityPercent}%` : '-- %'}
             </div>
             <div className="text-xs font-medium text-emerald-700 flex items-center space-x-1">
               <TrendingUp className="w-3.5 h-3.5" />
@@ -136,10 +141,10 @@ function App() {
               </div>
             </div>
             <div className="text-3xl font-extrabold text-slate-900 mb-1">
-              {stats?.summary?.avgLatencyMs !== undefined ? `${stats.summary.avgLatencyMs} ms` : '-- ms'}
+              {hasData && stats?.latency?.avgMs !== undefined ? `${stats.latency.avgMs} ms` : '-- ms'}
             </div>
             <div className="text-xs font-medium text-slate-500">
-              p95: {stats?.summary?.p95LatencyMs !== undefined ? `${stats.summary.p95LatencyMs}ms` : '--'} &bull; p99: {stats?.summary?.p99LatencyMs !== undefined ? `${stats.summary.p99LatencyMs}ms` : '--'}
+              p95: {hasData ? `${stats?.latency?.p95Ms}ms` : '--'} &bull; p99: {hasData ? `${stats?.latency?.p99Ms}ms` : '--'}
             </div>
           </div>
 
@@ -151,7 +156,7 @@ function App() {
               </div>
             </div>
             <div className="text-3xl font-extrabold text-slate-900 mb-1">
-              {stats?.summary?.totalChecks ? stats.summary.totalChecks.toLocaleString() : '--'}
+              {stats?.summary?.totalChecks !== undefined ? stats.summary.totalChecks.toLocaleString() : '0'}
             </div>
             <div className="text-xs font-medium text-slate-500">PostgreSQL earthre_sla_monitor</div>
           </div>
@@ -164,7 +169,7 @@ function App() {
               </div>
             </div>
             <div className="text-3xl font-extrabold text-slate-900 mb-1">
-              {stats?.dataQuality?.invalidCount !== undefined ? stats.dataQuality.invalidCount.toLocaleString() : '--'}
+              {stats?.summary?.invalidChecks !== undefined ? stats.summary.invalidChecks.toLocaleString() : '0'}
             </div>
             <div className="text-xs font-medium text-slate-500">7 automated cleaning rules</div>
           </div>
@@ -204,16 +209,16 @@ function App() {
                 { id: 'svc-reports', name: 'Reports Generator', type: 'Analytics' },
                 { id: 'svc-notify', name: 'Notify Worker', type: 'Async Messages' },
               ].map(svc => {
-                const serviceStat = stats?.serviceBreakdown?.find(s => s.serviceId === svc.id);
+                const serviceStat = stats?.services?.find(s => s.serviceId === svc.id);
                 return (
                   <div key={svc.id} className="bg-slate-50/70 border border-slate-200/80 p-4 rounded-xl flex items-center justify-between hover:border-emerald-300 hover:bg-emerald-50/30 transition-all">
                     <div>
                       <div className="text-sm font-bold text-slate-800">{svc.name}</div>
                       <div className="text-xs text-slate-500">{svc.id} &bull; {svc.type}</div>
-                      {serviceStat ? (
+                      {serviceStat && serviceStat.totalChecks > 0 ? (
                         <div className="text-xs text-emerald-700 font-bold mt-1.5 flex items-center space-x-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>SLA: {serviceStat.availabilityPct}% ({serviceStat.avgLatencyMs}ms avg)</span>
+                          <span>SLA: {serviceStat.availabilityPercent}% ({serviceStat.avgLatencyMs}ms avg)</span>
                         </div>
                       ) : (
                         <div className="text-xs text-slate-400 mt-1">Pending CSV upload...</div>
@@ -227,6 +232,11 @@ function App() {
           </div>
 
         </div>
+
+        {/* Filterable Monitoring Logs Table Section */}
+        <section>
+          <LogsTable refreshKey={logsRefreshKey} />
+        </section>
 
       </main>
 

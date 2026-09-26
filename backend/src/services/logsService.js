@@ -57,7 +57,7 @@ async function getMonitoringLogs(queryParams = {}) {
     }
 
     if (search && search.trim() !== '') {
-        whereConditions.push(`(service_id ILIKE $${paramIndex} OR service_name ILIKE $${paramIndex} OR agent ILIKE $${paramIndex})`);
+        whereConditions.push(`(service_id ILIKE $${paramIndex} OR service_name ILIKE $${paramIndex} OR agent ILIKE $${paramIndex} OR region ILIKE $${paramIndex} OR validation_errors ILIKE $${paramIndex})`);
         params.push(`%${search.trim()}%`);
         paramIndex++;
     }
