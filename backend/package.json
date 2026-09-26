@@ -4,7 +4,7 @@
     "description": "EarthRe SLA Monitoring Serverless Backend",
     "main": "src/app.js",
     "scripts": {
-        "start": "node src/app.js"
+        "start": "sam local start-api --env-vars .env"
     },
     "dependencies": {
         "dotenv": "^16.4.5",
