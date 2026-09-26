@@ -1,0 +1,15 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "earthre-sla-monitor-backend"
+resolve_s3 = true
+s3_prefix = "earthre-sla-monitor-backend"
+region = "ap-south-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "DatabaseUrl=\"postgresql://neondb_owner:npg_qQZ8RNlCsuv1@ep-solitary-field-b37expud-pooler.c-4.ap-southeast-1.aws.neon.tech/earthre_sla_monitor?sslmode=require\""
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-south-1"

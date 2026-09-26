@@ -3,7 +3,7 @@
 -- Target Database: earthre_sla_monitor
 -- ==================================================
 
--- 1. Enable UUID Extension
+-- 1. Enable UUID Extension if needed
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. Drop existing tables if re-creating
@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS upload_batches CASCADE;
 
 -- 3. Table: upload_batches (Stores CSV upload metadata and processing status)
 CREATE TABLE upload_batches (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     filename VARCHAR(255) NOT NULL,
     uploaded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     total_rows INTEGER DEFAULT 0 NOT NULL,
