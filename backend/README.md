@@ -8,8 +8,8 @@ It ingests CSV monitoring data across 5 core services, cleans and normalizes mes
 ---
 
 ## 2. Architecture & Tech Stack
-- **Compute**: AWS Lambda (Serverless Node.js 20.x runtime)
-- **API Gateway**: AWS API Gateway (HTTP Proxy Router for Lambda)
+- **Compute**: AWS Lambda (Serverless Node.js 20.x runtime handler)
+- **API Gateway**: AWS API Gateway (HTTP Proxy Router)
 - **Database**: PostgreSQL (`earthre_sla_monitor` database)
 - **Infrastructure-as-Code**: AWS SAM (`template.yaml`)
 - **DB Client**: `pg` (Node.js PostgreSQL Connection Pool)
@@ -21,16 +21,11 @@ It ingests CSV monitoring data across 5 core services, cleans and normalizes mes
 backend/
 ├── template.yaml                  # AWS SAM Infrastructure-as-Code template
 ├── package.json                   # Backend Node.js package manifest
-├── .env.local                     # Local PostgreSQL environment configuration
-├── database/
-│   ├── schema.sql                 # DDL script for upload_batches & monitoring_checks
-│   └── scripts/
-│       ├── profile_dataset.js     # Data quality profiler script
-│       ├── test_ingestion.js      # CSV batch ingestion test runner
-│       └── test_apis.js           # API Gateway handler test runner
+├── .env                           # Local PostgreSQL environment configuration
 └── src/
     ├── app.js                     # AWS Lambda entrypoint router
     ├── db.js                      # PostgreSQL pool connection helper
+    ├── e2e_integration_test.js    # Automated E2E test runner
     └── services/
         ├── csvParser.js           # CSV parsing & 7-rule data cleaning engine
         ├── ingestionService.js    # PostgreSQL batch transaction service
@@ -40,34 +35,32 @@ backend/
 
 ---
 
-## 4. Database Schema
-Defined in `backend/database/schema.sql`:
+## 4. Local Quick Start
 
-### `upload_batches` Table
-Tracks metadata for every CSV file uploaded.
-- `id`: UUID (Primary Key, default `uuid_generate_v4()`)
-- `filename`: VARCHAR(255)
-- `uploaded_at`: TIMESTAMPTZ (Default CURRENT_TIMESTAMP)
-- `total_rows`, `valid_rows`, `invalid_rows`, `duplicate_rows`: INTEGER
-- `processing_status`: VARCHAR(50) ('COMPLETED')
+1. **Install Dependencies**:
+   ```bash
+   cd backend
+   npm install
+   ```
 
-### `monitoring_checks` Table
-Stores individual monitoring records after cleaning & validation.
-- `id`: BIGSERIAL (Primary Key)
-- `batch_id`: UUID (Foreign Key -> `upload_batches.id` ON DELETE CASCADE)
-- `service_id`: VARCHAR(100) (`svc-auth`, `svc-payments`, etc.)
-- `service_name`: VARCHAR(100)
-- `timestamp`: TIMESTAMPTZ (Normalized to UTC)
-- `status_code`: INTEGER (200, 500, 502, 503, 999)
-- `latency_ms`: INTEGER (Normalized to milliseconds, NULL if missing/invalid)
-- `agent`: VARCHAR(50) (`agent-1`, `agent-2`)
-- `region`: VARCHAR(50) (`ap-south-1`)
-- `is_valid`: BOOLEAN
-- `validation_errors`: TEXT (Comma-separated error flags)
+2. **Set Environment Variables (`backend/.env`)**:
+   ```env
+   DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/earthre_sla_monitor
+   AWS_REGION=ap-south-1
+   PORT=3000
+   ```
+
+3. **Start AWS SAM Local Serverless API Gateway**:
+   ```powershell
+   $env:AWS_ACCESS_KEY_ID="dummy"
+   $env:AWS_SECRET_ACCESS_KEY="dummy"
+   $env:AWS_DEFAULT_REGION="ap-south-1"
+   sam local start-api --env-vars .env
+   ```
 
 ---
 
-## 5. Data Quality & Cleaning Pipeline Rules
+## 5. 7 Data Quality & Cleaning Pipeline Rules
 Implements 7 automated data cleaning rules in `src/services/csvParser.js`:
 1. **Seconds Latency Normalization**: Converts `latency_unit = 's'` to milliseconds (`* 1000`).
 2. **Missing Latency**: Retains missing latency as `NULL` without failing SLA availability.
@@ -89,16 +82,8 @@ Implements 7 automated data cleaning rules in `src/services/csvParser.js`:
 
 ---
 
-## 7. Local Testing Commands
-Run commands from the `backend/` folder:
-
+## 7. Automated E2E Testing
+To execute backend integration tests:
 ```bash
-# 1. Profile CSV Dataset (44,652 rows scan)
-node database/scripts/profile_dataset.js
-
-# 2. Test CSV Batch Ingestion Pipeline
-node database/scripts/test_ingestion.js
-
-# 3. Test API Gateway Endpoints
-node database/scripts/test_apis.js
+node src/e2e_integration_test.js
 ```
