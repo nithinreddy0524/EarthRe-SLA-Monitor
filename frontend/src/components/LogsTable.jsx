@@ -134,16 +134,16 @@ export default function LogsTable({ refreshKey }) {
     const hasActiveFilters = serviceId || statusCode || isValid !== '' || startDate || endDate || search;
 
     return (
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                 <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20">
-                        <ListFilter className="w-5 h-5" />
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 shrink-0">
+                        <ListFilter className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-900">Filterable Monitoring Logs</h3>
-                        <p className="text-xs text-slate-500">Audit individual service check records, date ranges & data quality flags</p>
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900">Filterable Monitoring Logs</h3>
+                        <p className="text-[11px] sm:text-xs text-slate-500">Audit individual service check records, date ranges & data quality flags</p>
                     </div>
                 </div>
 
@@ -168,7 +168,7 @@ export default function LogsTable({ refreshKey }) {
             </div>
 
             {/* Filter Controls Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-xl border border-slate-200/80">
 
                 {/* Search Input */}
                 <div className="relative flex items-center lg:col-span-2">
@@ -254,8 +254,8 @@ export default function LogsTable({ refreshKey }) {
             </div>
 
             {/* Logs Table */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200/80">
-                <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 max-w-full">
+                <table className="w-full text-left border-collapse text-xs min-w-[700px]">
                     <thead>
                         <tr className="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                             <th className="py-3 px-4">Timestamp (UTC)</th>

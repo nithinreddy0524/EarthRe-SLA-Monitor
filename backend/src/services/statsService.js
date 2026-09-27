@@ -82,6 +82,22 @@ async function getSlaStats(filters = {}) {
   `);
   const dqStats = dataQualityRes.rows[0];
 
+  // 5. Recent Ingestion Batches Audit Log
+  const recentBatchesRes = await query(`
+    SELECT
+      id as batch_id,
+      filename,
+      uploaded_at,
+      total_rows,
+      valid_rows,
+      invalid_rows,
+      duplicate_rows,
+      processing_status
+    FROM upload_batches
+    ORDER BY uploaded_at DESC
+    LIMIT 20;
+  `);
+
   return {
     summary: {
       totalBatches: batchStats.total_batches,
@@ -106,6 +122,16 @@ async function getSlaStats(filters = {}) {
       missingLatencyCount: dqStats.missing_latency_count,
       duplicateRowsCount: batchStats.total_duplicate_rows,
     },
+    recentBatches: recentBatchesRes.rows.map(b => ({
+      batchId: b.batch_id,
+      filename: b.filename,
+      uploadedAt: b.uploaded_at,
+      totalRows: b.total_rows,
+      validRows: b.valid_rows,
+      invalidRows: b.invalid_rows,
+      duplicateRows: b.duplicate_rows,
+      processingStatus: b.processing_status,
+    })),
   };
 }
 

@@ -153,13 +153,13 @@ export default function CsvUploader({ onUploadSuccess }) {
             {uploadResult && (
                 <div className="bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200/90 rounded-xl p-4 space-y-3.5 shadow-2xs">
 
-                    {/* Top Executive Header & Success Badge (Single-Line Layout) */}
-                    <div className="flex items-center justify-between gap-3 border-b border-emerald-200/60 pb-2.5">
-                        <div className="flex items-center space-x-2 text-emerald-950 font-bold text-xs whitespace-nowrap">
+                    {/* Top Executive Header & Success Badge (Mobile Responsive) */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/60 pb-2.5">
+                        <div className="flex items-center space-x-2 text-emerald-950 font-bold text-xs">
                             <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span>Batch Ingestion Completed</span>
                         </div>
-                        <span className="inline-flex items-center space-x-1.5 text-[10px] font-bold bg-emerald-700 text-white px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap shrink-0">
+                        <span className="inline-flex items-center space-x-1.5 text-[10px] font-bold bg-emerald-700 text-white px-2.5 py-1 rounded-full shadow-2xs whitespace-nowrap self-start sm:self-auto shrink-0">
                             <CheckCircle2 className="w-3 h-3 text-white" />
                             <span>Successfully Processed</span>
                         </span>
@@ -184,7 +184,7 @@ export default function CsvUploader({ onUploadSuccess }) {
                             <div className="text-slate-900 font-extrabold text-sm mt-0.5">{uploadResult.totalRows.toLocaleString()}</div>
                         </div>
                         <div className="bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-lg shadow-2xs">
-                            <div className="text-emerald-700 text-[9px] uppercase font-bold tracking-wider">New Ingested</div>
+                            <div className="text-emerald-700 text-[9px] uppercase font-bold tracking-wider">Valid Rows</div>
                             <div className="text-emerald-900 font-extrabold text-sm mt-0.5">{(uploadResult.newlyInsertedRows ?? uploadResult.validRows).toLocaleString()}</div>
                         </div>
                         <div className="bg-amber-50/80 border border-amber-200 p-2.5 rounded-lg shadow-2xs">

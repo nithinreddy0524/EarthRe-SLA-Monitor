@@ -17,6 +17,7 @@ import { fetchHealth, fetchSlaStats } from './api';
 import CsvUploader from './components/CsvUploader';
 import LogsTable from './components/LogsTable';
 import AboutSection from './components/AboutSection';
+import BatchHistory from './components/BatchHistory';
 
 function App() {
   const [health, setHealth] = useState(null);
@@ -66,31 +67,42 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Top Navigation Header */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-6 py-4 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shadow-md shadow-emerald-600/20 text-white">
-              <Activity className="w-6 h-6" />
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-3.5 sm:py-4 shadow-2xs">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center justify-between sm:justify-start space-x-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shadow-md shadow-emerald-600/20 text-white shrink-0">
+                <Activity className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-xl font-black bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-900 bg-clip-text text-transparent tracking-tight">
+                  EarthRe SLA Monitor
+                </h1>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Enterprise Service Availability & Reliability Dashboard</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-black bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-900 bg-clip-text text-transparent tracking-tight">
-                EarthRe SLA Monitor
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">Enterprise Service Availability & Reliability Dashboard</p>
-            </div>
+
+            {/* Mobile Refresh Button */}
+            <button
+              onClick={() => { checkBackendHealth(); loadDashboardStats(); setLogsRefreshKey(prev => prev + 1); }}
+              className="sm:hidden p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-emerald-700 shadow-2xs cursor-pointer shrink-0"
+              title="Refresh All System Data & Metrics"
+            >
+              <RefreshCw className={`w-4 h-4 ${(loadingHealth || loadingStats) ? 'animate-spin text-emerald-600' : ''}`} />
+            </button>
           </div>
 
-          {/* Backend Status Indicator & Refresh Button */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 bg-emerald-50/80 border border-emerald-200/80 px-3.5 py-1.5 rounded-full text-xs shadow-2xs">
-              <span className={`w-2.5 h-2.5 rounded-full ${health?.status === 'healthy' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+          {/* Backend Status Indicator & Desktop Refresh Button */}
+          <div className="flex items-center justify-between sm:justify-end space-x-3">
+            <div className="flex items-center space-x-2 bg-emerald-50/80 border border-emerald-200/80 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-[11px] sm:text-xs shadow-2xs">
+              <span className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${health?.status === 'healthy' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
               <span className="text-emerald-900 font-semibold">
-                {loadingHealth ? 'Connecting Backend...' : health?.status === 'healthy' ? 'System Online' : 'Backend Connected'}
+                {loadingHealth ? 'Connecting...' : health?.status === 'healthy' ? 'System Online' : 'Backend Connected'}
               </span>
             </div>
             <button
               onClick={() => { checkBackendHealth(); loadDashboardStats(); setLogsRefreshKey(prev => prev + 1); }}
-              className="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-slate-600 hover:text-emerald-700 transition-all shadow-2xs cursor-pointer"
+              className="hidden sm:flex p-2.5 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 text-slate-600 hover:text-emerald-700 transition-all shadow-2xs cursor-pointer shrink-0"
               title="Refresh All System Data & Metrics"
             >
               <RefreshCw className={`w-4 h-4 ${(loadingHealth || loadingStats) ? 'animate-spin text-emerald-600' : ''}`} />
@@ -100,19 +112,19 @@ function App() {
       </header>
 
       {/* Main Content Dashboard Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
 
         {/* Executive Hero Banner */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-teal-50/50 border border-emerald-200/80 p-8 shadow-sm">
-          <div className="relative z-10 max-w-3xl space-y-4">
-            <div className="inline-flex items-center space-x-2 bg-emerald-100/80 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold text-emerald-800 shadow-2xs">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-teal-50/50 border border-emerald-200/80 p-5 sm:p-8 shadow-sm">
+          <div className="relative z-10 max-w-3xl space-y-3 sm:space-y-4">
+            <div className="inline-flex items-center space-x-2 bg-emerald-100/80 border border-emerald-200 px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold text-emerald-800 shadow-2xs">
+              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
               <span>Automated Telemetry Ingestion & Quality Audit</span>
             </div>
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
               Service Availability & Response Time Analytics
             </h2>
-            <p className="text-slate-600 text-sm leading-relaxed">
+            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
               Upload monitoring CSV datasets to track service uptime, measure response speeds, clean invalid rows, and automatically remove duplicate check records.
             </p>
           </div>
@@ -120,16 +132,17 @@ function App() {
 
         {/* SLA Stats Section (Collapsible Header & Controls) */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between bg-white border border-slate-200/80 px-5 py-3.5 rounded-2xl shadow-2xs">
-            <div className="flex items-center space-x-3">
-              <Cpu className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">System Performance Summary</h3>
+          <div className="flex items-center justify-between bg-white border border-slate-200/80 px-4 sm:px-5 py-3 sm:py-3.5 rounded-2xl shadow-2xs">
+            <div className="flex items-center space-x-2.5 sm:space-x-3">
+              <Cpu className="w-4 h-4 text-emerald-600 shrink-0" />
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">System Performance Summary</h3>
             </div>
             <button
               onClick={() => setIsStatsCollapsed(!isStatsCollapsed)}
-              className="flex items-center space-x-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-xl border border-emerald-200 transition-all cursor-pointer"
+              className="flex items-center space-x-1 sm:space-x-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
-              <span>{isStatsCollapsed ? 'Show Summary' : 'Hide Summary'}</span>
+              <span>{isStatsCollapsed ? 'Show' : 'Hide'}</span>
+              <span className="hidden sm:inline">Summary</span>
               {isStatsCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
             </button>
           </div>
@@ -229,10 +242,10 @@ function App() {
                 </div>
 
                 {/* Monitored Services SLA Breakdown (60% width) */}
-                <div className="lg:col-span-3 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="lg:col-span-3 bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
                     <div className="flex items-center space-x-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
                         <Server className="w-4 h-4" />
                       </div>
                       <div>
@@ -241,7 +254,7 @@ function App() {
                       </div>
                     </div>
                     {servicesList.length > 0 && (
-                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 whitespace-nowrap self-start sm:self-auto shrink-0">
                         {servicesList.length} Active Service{servicesList.length === 1 ? '' : 's'}
                       </span>
                     )}
@@ -283,6 +296,11 @@ function App() {
 
             </div>
           )}
+        </section>
+
+        {/* Batch Ingestion Audit History Section */}
+        <section>
+          <BatchHistory batches={stats?.recentBatches || []} loading={loadingStats} />
         </section>
 
         {/* Filterable Monitoring Logs Table Section */}

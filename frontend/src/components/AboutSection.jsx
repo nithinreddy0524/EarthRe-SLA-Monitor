@@ -15,23 +15,24 @@ export default function AboutSection() {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <section className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-6">
+        <section className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-6">
             {/* Top Bar Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3 sm:pb-4">
                 <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
-                        <Info className="w-5 h-5" />
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
+                        <Info className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     <div>
-                        <h3 className="text-base font-bold text-slate-900">About EarthRe SLA Monitor</h3>
-                        <p className="text-xs text-slate-500">Enterprise Service Availability & Reliability Platform Architecture</p>
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900">About EarthRe SLA Monitor</h3>
+                        <p className="text-[11px] sm:text-xs text-slate-500">Enterprise Service Availability & Reliability Platform Architecture</p>
                     </div>
                 </div>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex items-center space-x-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-xl border border-emerald-200 transition-all cursor-pointer"
+                    className="flex items-center space-x-1 sm:space-x-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 sm:px-3.5 rounded-xl border border-emerald-200 transition-all cursor-pointer whitespace-nowrap shrink-0 self-start sm:self-auto"
                 >
-                    <span>{isExpanded ? 'Hide Details' : 'View Architecture'}</span>
+                    <span>{isExpanded ? 'Hide' : 'View'}</span>
+                    <span className="hidden sm:inline">&nbsp;Architecture</span>
                     {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
             </div>
