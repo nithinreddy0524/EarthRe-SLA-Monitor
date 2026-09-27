@@ -15,10 +15,13 @@
 
 ## 🌟 Recruiter & Executive Highlights
 
-- **Multi-Layer Deduplication Engine**: Implements an in-memory composite key normalization layer coupled with database-level `ON CONFLICT (service_id, timestamp) DO NOTHING` atomic batch transactions—guaranteeing zero primary key or unique constraint violations.
-- **Batch Ingestion Audit History**: Built-in audit log (`upload_batches` schema) tracking every CSV dataset upload with detailed metrics for Total Rows, Valid Rows, Invalid Flagged Rows, Duplicates Skipped, and Status.
-- **Serverless Cloud Architecture**: Built with **AWS SAM**, **AWS Lambda** (Node.js 20.x runtime), **AWS API Gateway**, **PostgreSQL** (Neon Cloud), and **React 19** + **Tailwind CSS v4**.
-- **Mobile-First Responsive UX**: Thoughtfully designed responsive interface supporting all screen viewports with single-line status badges, context-aware dual empty states, loading spinners, and debounced search.
+- **Stateless Cloud Function Ingestion (AWS Lambda + API Gateway)**: Deployed serverless parsing engine built with AWS SAM (Node.js 20.x runtime) that ingests, validates, and cleans multi-day CSV datasets statelessly in cloud memory with zero cold-start bottlenecks.
+- **PostgreSQL Database Persistence & SLA SQL Aggregations**: Permanent relational storage on Neon Cloud (`earthre_sla_monitor`) executing fast indexed window aggregations (`PERCENTILE_CONT`) to compute overall SLA Availability % (`(HTTP 2xx / Valid Checks) * 100`) and latency tail percentiles (`avg`, `p50`, `p95`, `p99`).
+- **Single-Screen Executive Dashboard (React 19 + Tailwind CSS v4)**: A unified dashboard featuring a collapsible top performance summary, individual uptime & response time breakdowns across EarthRe's 5 microservices, an ingestion batch audit history log, an interactive architecture section, and a filterable logs table.
+- **7 Automated Data Cleaning & Anomaly Profiling Rules**: Automated normalization of mixed latency units (`s` to `ms`), missing latencies (`NULL`), negative latencies (`INVALID_LATENCY_NEGATIVE`), Unix epoch timestamps, timezone offsets (`+05:30`), HTTP 999 exclusion (`INVALID_STATUS_CODE_999`), and duplicate check entries.
+- **Multi-Layer Deduplication Engine**: In-memory composite key normalization (`csvParser.js`) paired with database-level `ON CONFLICT (service_id, timestamp) DO NOTHING` atomic batch transactions (`ingestionService.js`)—guaranteeing zero primary key or unique constraint violations.
+- **Batch Ingestion Audit History**: Built-in audit tracking table (`upload_batches` schema) displaying upload timestamps, Total Rows, Valid Rows, Invalid Flagged Rows, Duplicates Skipped, and execution status badges for every CSV dataset ingested.
+- **Mobile-First Responsive UX**: Thoughtfully designed interface supporting all screen viewports (mobile to ultra-wide desktop) with single-line status badges, context-aware dual empty states, loading spinners, and debounced live search.
 
 ---
 

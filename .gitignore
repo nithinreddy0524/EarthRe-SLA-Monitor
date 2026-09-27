@@ -1,11 +1,13 @@
 # Dependencies
 node_modules/
 
-# Environment Files
+# Environment & Configuration Files
 .env
 .env.local
 .env.production
 backend/.env.local
+samconfig.toml
+backend/samconfig.toml
 
 # Build & SAM Output
 dist/
