@@ -3,16 +3,17 @@
 ## 1. Overview
 The **EarthRe SLA Backend** is a high-performance, serverless data pipeline and REST API built with AWS SAM (Serverless Application Model), AWS Lambda (Node.js 20.x runtime), API Gateway, and PostgreSQL.
 
-It ingests CSV monitoring data across 5 core services, cleans and normalizes messy dataset anomalies, stores records in PostgreSQL (`earthre_sla_monitor`), and exposes REST endpoints for transparent SLA metrics calculation and log filtering.
+It ingests CSV monitoring data across 5 core microservices (`svc-auth`, `svc-payments`, `svc-search`, `svc-reports`, `svc-notify`), cleans and normalizes messy dataset anomalies, executes multi-layer deduplication, stores audit records in PostgreSQL (`earthre_sla_monitor`), and exposes REST endpoints for transparent SLA metrics calculation, batch audit logs, and monitoring check filtering.
 
 ---
 
-## 2. Architecture & Tech Stack
+## 2. Architecture & Key Backend Features
 - **Compute**: AWS Lambda (Serverless Node.js 20.x runtime handler)
 - **API Gateway**: AWS API Gateway (HTTP Proxy Router)
 - **Database**: PostgreSQL (`earthre_sla_monitor` database or Neon Cloud PostgreSQL)
 - **Infrastructure-as-Code**: AWS SAM (`template.yaml`)
-- **DB Client**: `pg` (Node.js PostgreSQL Connection Pool)
+- **Multi-Layer Deduplication Engine**: In-memory composite key normalization in `src/services/csvParser.js` coupled with atomic `ON CONFLICT (service_id, timestamp) DO NOTHING` database insertions in `src/services/ingestionService.js`.
+- **Batch Audit Log**: Tracks every batch upload in `upload_batches` with Total, Valid, Invalid, Duplicate counts and execution status.
 
 ---
 
@@ -29,8 +30,8 @@ backend/
     ├── db.js                      # PostgreSQL pool connection helper
     └── services/
         ├── csvParser.js           # CSV parsing & 7-rule data cleaning engine
-        ├── ingestionService.js    # PostgreSQL batch transaction service
-        ├── statsService.js        # SLA availability & latency percentiles calculator
+        ├── ingestionService.js    # PostgreSQL batch transaction & deduplication service
+        ├── statsService.js        # SLA availability & latency percentiles calculator (includes recentBatches)
         └── logsService.js         # Paginated monitoring logs query engine
 ```
 
@@ -90,14 +91,14 @@ Implements 7 automated data cleaning rules in `src/services/csvParser.js`:
 4. **Unix Epoch Timestamps**: Normalizes epoch seconds (e.g. `1746938700`) to UTC ISO timestamps.
 5. **Timezone Offset Timestamps**: Normalizes offset strings (e.g. `+05:30`) to UTC ISO timestamps.
 6. **HTTP Status 999**: Flags `is_valid = FALSE` and `INVALID_STATUS_CODE_999`. Excluded from SLA availability.
-7. **Exact Duplicate Rows**: Filters exact duplicate rows during ingestion.
+7. **Exact Duplicate Rows**: Filters exact duplicate rows during ingestion using `ON CONFLICT DO NOTHING`.
 
 ---
 
 ## 7. Backend API Endpoints
 | HTTP Method | Route | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/health` | Health check & PostgreSQL connection status |
-| `POST` | `/api/uploads` | Accepts CSV body for data ingestion & bulk storage |
-| `GET` | `/api/stats` | Returns SLA availability %, latency p50/p95/p99, and service breakdowns |
-| `GET` | `/api/logs` | Returns filterable monitoring check logs with search & pagination |
+| `GET` | `/api/health` | Health check & PostgreSQL database connection status |
+| `POST` | `/api/uploads` | Accepts CSV body for data ingestion, deduplication & bulk storage |
+| `GET` | `/api/stats` | Returns SLA availability %, latency p50/p95/p99, service breakdown, and recent batches |
+| `GET` | `/api/logs` | Returns filterable monitoring check logs with dynamic search & pagination |

@@ -4,12 +4,21 @@
 [![Architecture](https://img.shields.io/badge/Architecture-Serverless_AWS_SAM-047857.svg)](#architecture)
 [![Theme](https://img.shields.io/badge/Theme-White_%26_Emerald_Green_Gradient-10b981.svg)](#frontend)
 
-**EarthRe SLA Monitoring Dashboard** is a high-performance, serverless data pipeline and real-time analytics engine designed to monitor SLA compliance, service availability %, response latency percentiles (avg, p50, p95, p99), and data quality anomalies across EarthRe's 5 microservices:
+**EarthRe SLA Monitoring Dashboard** is an enterprise-grade, serverless data pipeline and real-time SLA analytics platform engineered to track service availability %, measure response latency percentiles (`avg`, `p50`, `p95`, `p99`), execute multi-layer deduplication, and audit telemetry anomalies across EarthRe's 5 core microservices:
 1. `svc-auth` (Authentication API)
 2. `svc-payments` (Payments API)
 3. `svc-search` (Search Engine)
 4. `svc-reports` (Reports Generator)
 5. `svc-notify` (Notify Worker)
+
+---
+
+## 🌟 Recruiter & Executive Highlights
+
+- **Multi-Layer Deduplication Engine**: Implements an in-memory composite key normalization layer coupled with database-level `ON CONFLICT (service_id, timestamp) DO NOTHING` atomic batch transactions—guaranteeing zero primary key or unique constraint violations.
+- **Batch Ingestion Audit History**: Built-in audit log (`upload_batches` schema) tracking every CSV dataset upload with detailed metrics for Total Rows, Valid Rows, Invalid Flagged Rows, Duplicates Skipped, and Status.
+- **Serverless Cloud Architecture**: Built with **AWS SAM**, **AWS Lambda** (Node.js 20.x runtime), **AWS API Gateway**, **PostgreSQL** (Neon Cloud), and **React 19** + **Tailwind CSS v4**.
+- **Mobile-First Responsive UX**: Thoughtfully designed responsive interface supporting all screen viewports with single-line status badges, context-aware dual empty states, loading spinners, and debounced search.
 
 ---
 
@@ -40,14 +49,14 @@
                                └─────────────────────────┘
 ```
 
-### Architectural Decisions:
+### Key Architectural Decisions:
 - **AWS Lambda + API Gateway**: Fully serverless, stateless parsing engine that auto-scales on demand with zero idle cost.
 - **PostgreSQL (Neon Cloud)**: Relational schema enabling fast indexed window aggregations (`PERCENTILE_CONT`) for SLA percentiles.
-- **React 19 + Tailwind CSS v4**: Responsive single-screen dashboard with collapsable SLA stats cards and instant filterable logs table.
+- **React 19 + Tailwind CSS v4**: Responsive single-screen dashboard with collapsable SLA stats cards, batch history audit log, interactive about section, and instant filterable logs table.
 
 ---
 
-## 🔍 Data Findings & Quality Rules
+## 🔍 Data Findings & Automated Quality Rules
 
 During automated profiling across 44,652+ monitoring checks, 7 critical data quality anomalies were identified and handled:
 
@@ -59,7 +68,7 @@ During automated profiling across 44,652+ monitoring checks, 7 critical data qua
 | 4 | **Unix Epoch Timestamps** | Timestamps recorded in raw Unix seconds (e.g., `1746938700`). | Normalized epoch seconds to UTC ISO 8601 strings. |
 | 5 | **Timezone Offsets** | Local offset timestamps (e.g., `2026-03-01T15:30:00+05:30`). | Converted all local offset timestamps to UTC ISO strings. |
 | 6 | **HTTP Status 999** | Invalid non-standard status code `999`. | Marked `is_valid = FALSE` and flagged `INVALID_STATUS_CODE_999`. Excluded from SLA availability %. |
-| 7 | **Exact Duplicate Checks** | Duplicate `(service_id, timestamp)` entries. | Filtered duplicate checks during atomic database ingestion. |
+| 7 | **Exact Duplicate Checks** | Duplicate `(service_id, timestamp)` entries. | Filtered duplicate checks during atomic database ingestion with `ON CONFLICT DO NOTHING`. |
 
 ---
 
@@ -70,8 +79,8 @@ During automated profiling across 44,652+ monitoring checks, 7 critical data qua
    - Checks with HTTP status 999 are treated as invalid monitoring artifacts and excluded from availability calculations to prevent metric skew.
 2. **Latency Percentiles Selection**:
    - Calculated **Average**, **p50 (Median)**, **p95**, and **p99** using PostgreSQL `PERCENTILE_CONT` to provide billing and engineering teams clear insight into response tail latencies.
-3. **Single-Screen Layout**:
-   - Implemented an expandable/collapsible top stats section and a bottom logs view with live text search and multi-criteria filters on a single screen.
+3. **Single-Screen Executive Dashboard Layout**:
+   - Implemented collapsible top SLA performance summary cards, batch ingestion audit history table, about platform architecture component, and bottom logs view with live text search and multi-criteria filters on a single screen.
 
 ---
 
@@ -169,6 +178,17 @@ sam deploy --guided
 
 ---
 
+## 🔌 API Specification
+
+| HTTP Method | Route | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/health` | Health check & PostgreSQL database connection status |
+| `POST` | `/api/uploads` | Accepts CSV body for data cleaning, deduplication & bulk storage |
+| `GET` | `/api/stats` | Returns SLA availability %, latency p50/p95/p99, service breakdown, and recent batches |
+| `GET` | `/api/logs` | Returns filterable monitoring check logs with dynamic dropdowns, search & pagination |
+
+---
+
 ## 🔮 What I'd Do Differently With More Time
 
 1. **Automated S3 Bucket Trigger**:
@@ -177,17 +197,6 @@ sam deploy --guided
    Implement AWS API Gateway WebSockets to stream chunked upload processing status in real time.
 3. **Automated SLA Credit Alerts**:
    Integrate Amazon SNS / Slack webhook notifications when monthly availability drops below the 99.9% SLA threshold.
-
----
-
-## 🔌 API Specification
-
-| HTTP Method | Route | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Health check & PostgreSQL database connection status |
-| `POST` | `/api/uploads` | Accepts CSV body for data cleaning & PostgreSQL batch storage |
-| `GET` | `/api/stats` | Returns SLA availability %, latency p50/p95/p99, and service breakdowns |
-| `GET` | `/api/logs` | Returns filterable monitoring check logs with multi-select & search |
 
 ---
 
@@ -200,13 +209,13 @@ EarthRe-SLA-Monitor/
 │   ├── .env                        # Local SAM environment variables
 │   ├── package.json                # Dependencies (dotenv, pg)
 │   ├── database/
-│   │   └── schema.sql              # PostgreSQL DDL migration script
+│   │   └── schema.sql              # PostgreSQL DDL migration script (upload_batches & monitoring_checks)
 │   └── src/
 │       ├── app.js                  # AWS Lambda entrypoint router
 │       ├── db.js                   # PostgreSQL connection pool
 │       └── services/
-│           ├── csvParser.js        # CSV parsing & 7 cleaning rules
-│           ├── ingestionService.js # Atomic PostgreSQL transaction batch store
+│           ├── csvParser.js        # CSV parsing & 7 data quality rules
+│           ├── ingestionService.js # Atomic PostgreSQL transaction batch store & deduplication
 │           ├── statsService.js     # SLA availability & percentiles calculator
 │           └── logsService.js      # Paginated monitoring logs search engine
 ├── frontend/                       # React 19 + Vite 6 Dashboard
@@ -214,10 +223,12 @@ EarthRe-SLA-Monitor/
 │   ├── vercel.json                 # Vercel SPA deployment configuration
 │   ├── package.json                # React & Tailwind CSS dependencies
 │   └── src/
-│       ├── App.jsx                 # Dashboard overview & metrics cards
+│       ├── App.jsx                 # Primary Dashboard overview & metrics layout
 │       ├── api.js                  # REST API communication client
 │       └── components/
-│           ├── CsvUploader.jsx     # Interactive CSV file upload dropzone
+│           ├── CsvUploader.jsx     # Executive CSV drag-and-drop uploader
+│           ├── BatchHistory.jsx    # Ingestion batch audit log history table
+│           ├── AboutSection.jsx    # Collapsible system architecture breakdown
 │           └── LogsTable.jsx       # Filterable monitoring check logs table
 └── sample_data/                    # EarthRe official CSV dataset files
 ```
