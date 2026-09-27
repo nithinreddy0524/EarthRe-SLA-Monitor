@@ -104,6 +104,7 @@ async function getSlaStats(filters = {}) {
       totalIngestedRows: batchStats.total_ingested_rows,
       totalChecks: globalStats.total_checks,
       validChecks: globalStats.valid_checks,
+      successfulChecks: globalStats.successful_checks,
       invalidChecks: globalStats.invalid_checks,
       duplicateRows: batchStats.total_duplicate_rows,
       availabilityPercent,

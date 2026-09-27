@@ -17,9 +17,10 @@
 
 - **Stateless Cloud Function Ingestion (AWS Lambda + API Gateway)**: Deployed serverless parsing engine built with AWS SAM (Node.js 20.x runtime) that ingests, validates, and cleans multi-day CSV datasets statelessly in cloud memory with zero cold-start bottlenecks.
 - **PostgreSQL Database Persistence & SLA SQL Aggregations**: Permanent relational storage on Neon Cloud (`earthre_sla_monitor`) executing fast indexed window aggregations (`PERCENTILE_CONT`) to compute overall SLA Availability % (`(HTTP 2xx / Valid Checks) * 100`) and latency tail percentiles (`avg`, `p50`, `p95`, `p99`).
-- **Single-Screen Executive Dashboard (React 19 + Tailwind CSS v4)**: A unified dashboard featuring a collapsible top performance summary, individual uptime & response time breakdowns across EarthRe's 5 microservices, an ingestion batch audit history log, an interactive architecture section, and a filterable logs table.
+- **Single-Screen Executive Dashboard (React 19 + Tailwind CSS v4)**: A unified dashboard featuring a 6-card executive performance summary (Uptime %, Latency Percentiles, Successful 2xx Hits, Total 4xx/5xx Failures, Telemetry Deduplication, and Data Quality Audit), individual microservice cards with emerald green availability progress bars, an ingestion batch audit history log, an interactive architecture section, and a filterable logs table.
 - **7 Automated Data Cleaning & Anomaly Profiling Rules**: Automated normalization of mixed latency units (`s` to `ms`), missing latencies (`NULL`), negative latencies (`INVALID_LATENCY_NEGATIVE`), Unix epoch timestamps, timezone offsets (`+05:30`), HTTP 999 exclusion (`INVALID_STATUS_CODE_999`), and duplicate check entries.
 - **Multi-Layer Deduplication Engine**: In-memory composite key normalization (`csvParser.js`) paired with database-level `ON CONFLICT (service_id, timestamp) DO NOTHING` atomic batch transactions (`ingestionService.js`)—guaranteeing zero primary key or unique constraint violations.
+- **Microservices SLA Health Breakdown**: Grid-based breakdown for EarthRe's 5 core microservices displaying total failures, successful checks, valid check ratio, average speed, p95 tail latency, SLA Met/Breach pill badges, and visual emerald green availability line bars.
 - **Batch Ingestion Audit History**: Built-in audit tracking table (`upload_batches` schema) displaying upload timestamps, Total Rows, Valid Rows, Invalid Flagged Rows, Duplicates Skipped, and execution status badges for every CSV dataset ingested.
 - **Mobile-First Responsive UX**: Thoughtfully designed interface supporting all screen viewports (mobile to ultra-wide desktop) with single-line status badges, context-aware dual empty states, loading spinners, and debounced live search.
 
@@ -79,7 +80,9 @@ During automated profiling across 44,652+ monitoring checks, 7 critical data qua
 
 1. **SLA Availability Definition**:
    - **Formula**: `(Successful Checks [HTTP 2xx] / Valid Checks) * 100`
-   - Checks with HTTP status 999 are treated as invalid monitoring artifacts and excluded from availability calculations to prevent metric skew.
+   - **HTTP 2xx Status Codes**: Counted as successful SLA uptime checks.
+   - **HTTP 4xx & 5xx Status Codes**: Counted as SLA downtime failures (client/auth errors, server crashes, connection timeouts).
+   - **HTTP Status 999**: Excluded as invalid monitoring pings to prevent metric skew.
 2. **Latency Percentiles Selection**:
    - Calculated **Average**, **p50 (Median)**, **p95**, and **p99** using PostgreSQL `PERCENTILE_CONT` to provide billing and engineering teams clear insight into response tail latencies.
 3. **Single-Screen Executive Dashboard Layout**:

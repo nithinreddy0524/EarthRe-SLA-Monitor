@@ -1,5 +1,4 @@
 # Files to ignore when building AWS Lambda deployment packages
-samconfig.toml
 .env
 .env.local
 node_modules/
