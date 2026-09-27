@@ -10,7 +10,7 @@ It ingests CSV monitoring data across 5 core services, cleans and normalizes mes
 ## 2. Architecture & Tech Stack
 - **Compute**: AWS Lambda (Serverless Node.js 20.x runtime handler)
 - **API Gateway**: AWS API Gateway (HTTP Proxy Router)
-- **Database**: PostgreSQL (`earthre_sla_monitor` database)
+- **Database**: PostgreSQL (`earthre_sla_monitor` database or Neon Cloud PostgreSQL)
 - **Infrastructure-as-Code**: AWS SAM (`template.yaml`)
 - **DB Client**: `pg` (Node.js PostgreSQL Connection Pool)
 
@@ -22,10 +22,11 @@ backend/
 ├── template.yaml                  # AWS SAM Infrastructure-as-Code template
 ├── package.json                   # Backend Node.js package manifest
 ├── .env                           # Local PostgreSQL environment configuration
+├── database/
+│   └── schema.sql                 # DDL migration script for upload_batches & monitoring_checks
 └── src/
     ├── app.js                     # AWS Lambda entrypoint router
     ├── db.js                      # PostgreSQL pool connection helper
-    ├── e2e_integration_test.js    # Automated E2E test runner
     └── services/
         ├── csvParser.js           # CSV parsing & 7-rule data cleaning engine
         ├── ingestionService.js    # PostgreSQL batch transaction service
@@ -60,7 +61,28 @@ backend/
 
 ---
 
-## 5. 7 Data Quality & Cleaning Pipeline Rules
+## 5. Production AWS Lambda Deployment
+
+1. **Build SAM Package**:
+   ```powershell
+   sam build
+   ```
+
+2. **Deploy to AWS Cloud**:
+   ```powershell
+   sam deploy --guided
+   ```
+   - **Stack Name**: `earthre-sla-monitor-backend`
+   - **AWS Region**: `ap-south-1`
+   - **Parameter DatabaseUrl**: Enter your Neon Cloud PostgreSQL link (`postgresql://neondb_owner:pass@ep-xyz.neon.tech/earthre_sla_monitor?sslmode=require`)
+   - **Confirm changes**: `Y`
+   - **Allow IAM role creation**: `Y`
+
+3. **Outputs**: SAM will return your live API Gateway URL (e.g., `https://ngzv0cfefg.execute-api.ap-south-1.amazonaws.com/Prod/api`).
+
+---
+
+## 6. 7 Data Quality & Cleaning Pipeline Rules
 Implements 7 automated data cleaning rules in `src/services/csvParser.js`:
 1. **Seconds Latency Normalization**: Converts `latency_unit = 's'` to milliseconds (`* 1000`).
 2. **Missing Latency**: Retains missing latency as `NULL` without failing SLA availability.
@@ -72,18 +94,10 @@ Implements 7 automated data cleaning rules in `src/services/csvParser.js`:
 
 ---
 
-## 6. Backend API Endpoints
+## 7. Backend API Endpoints
 | HTTP Method | Route | Description |
 | :--- | :--- | :--- |
 | `GET` | `/api/health` | Health check & PostgreSQL connection status |
 | `POST` | `/api/uploads` | Accepts CSV body for data ingestion & bulk storage |
 | `GET` | `/api/stats` | Returns SLA availability %, latency p50/p95/p99, and service breakdowns |
 | `GET` | `/api/logs` | Returns filterable monitoring check logs with search & pagination |
-
----
-
-## 7. Automated E2E Testing
-To execute backend integration tests:
-```bash
-node src/e2e_integration_test.js
-```

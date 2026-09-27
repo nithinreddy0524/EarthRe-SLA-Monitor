@@ -21,6 +21,7 @@ It provides real-time SLA availability percentage metrics, latency statistics (a
 frontend/
 ├── index.html                     # Main HTML template
 ├── vite.config.js                 # Vite 6 + Tailwind CSS v4 plugin configuration
+├── vercel.json                    # Vercel SPA deployment configuration
 ├── package.json                   # React & Tailwind dependencies
 ├── .env                           # Environment variables (VITE_API_BASE_URL)
 └── src/
@@ -35,17 +36,7 @@ frontend/
 
 ---
 
-## 4. Key Components & Layout
-1. **Header Navigation**: Shows EarthRe branding, system status badge, and backend connection indicator.
-2. **Hero Banner**: Explains transparent SLA monitoring & automated CSV data cleaning.
-3. **Overview Metrics Cards**: Displays Availability %, Avg Latency, Ingested Record Counts, and Cleaned Data Quality Anomalies.
-4. **CSV Upload Container**: Interactive file drag & drop dropzone for uploading monitoring CSV dataset files.
-5. **Monitored Microservices Breakdown**: SLA availability % and average latency breakdown cards for `svc-auth`, `svc-payments`, `svc-search`, `svc-reports`, and `svc-notify`.
-6. **Filterable Logs Table**: Search box, service filter, status code filter, quality status filter, and pagination.
-
----
-
-## 5. Development & Build Commands
+## 4. Local Quick Start & Build Commands
 Run commands from the `frontend/` directory:
 
 ```bash
@@ -58,3 +49,17 @@ npm run build
 # Preview Production Build
 npm run preview
 ```
+
+---
+
+## 5. Production Vercel Deployment
+
+1. Sign in to **[Vercel](https://vercel.com)** and click **Add New Project**.
+2. Select your **`EarthRe-SLA-Monitor`** GitHub repository.
+3. Configure project settings:
+   - **Framework Preset**: `Vite`
+   - **Root Directory**: `frontend`
+4. Add Environment Variable:
+   - **Key**: `VITE_API_BASE_URL`
+   - **Value**: `https://ngzv0cfefg.execute-api.ap-south-1.amazonaws.com/Prod/api`
+5. Click **Deploy**!

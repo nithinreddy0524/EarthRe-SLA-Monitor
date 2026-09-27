@@ -63,10 +63,10 @@ Follow these exact ordered steps to clone, configure, and run the complete serve
    ```
 
 2. **Set up PostgreSQL Database**:
-   - Create a database named `earthre_sla_monitor` in PostgreSQL.
-   - Run the DDL migration script `database/schema.sql` against `earthre_sla_monitor`:
+   - Create a database named `earthre_sla_monitor` in PostgreSQL or Neon Cloud.
+   - Run the DDL migration script `backend/database/schema.sql` against `earthre_sla_monitor`:
      ```bash
-     psql -U postgres -d earthre_sla_monitor -f database/schema.sql
+     psql -U postgres -d earthre_sla_monitor -f backend/database/schema.sql
      ```
 
 ---
@@ -132,6 +132,33 @@ Follow these exact ordered steps to clone, configure, and run the complete serve
 
 ---
 
+## 🌐 Production Cloud Deployment Guide
+
+### 1. Serverless Backend (AWS Lambda + API Gateway)
+1. **Build SAM Package**:
+   ```bash
+   cd backend
+   sam build
+   ```
+2. **Deploy to AWS Cloud via SAM CLI**:
+   ```bash
+   sam deploy --guided
+   ```
+   - **Stack Name**: `earthre-sla-monitor-backend`
+   - **AWS Region**: `ap-south-1`
+   - **Parameter DatabaseUrl**: Enter your Neon Cloud PostgreSQL URL (`postgresql://user:pass@ep-xyz.neon.tech/earthre_sla_monitor?sslmode=require`)
+3. Copy your live AWS API Gateway Endpoint URL (e.g., `https://ngzv0cfefg.execute-api.ap-south-1.amazonaws.com/Prod/api`).
+
+### 2. Frontend Dashboard (Vercel)
+1. Log into **[Vercel](https://vercel.com)** and import your `EarthRe-SLA-Monitor` GitHub repository.
+2. Set **Root Directory** to `frontend`.
+3. Add Environment Variable:
+   - **Key**: `VITE_API_BASE_URL`
+   - **Value**: `https://ngzv0cfefg.execute-api.ap-south-1.amazonaws.com/Prod/api`
+4. Click **Deploy**!
+
+---
+
 ## 🧹 7 Data Quality Cleaning Rules
 
 The ingestion engine (`backend/src/services/csvParser.js`) automatically profiles raw monitoring data against 7 strict data quality rules:
@@ -157,16 +184,6 @@ The ingestion engine (`backend/src/services/csvParser.js`) automatically profile
 
 ---
 
-## 🧪 Testing
-
-To run automated backend integration tests:
-```bash
-cd backend
-node src/e2e_integration_test.js
-```
-
----
-
 ## 📁 Repository Structure
 
 ```
@@ -175,10 +192,11 @@ EarthRe-SLA-Monitor/
 │   ├── template.yaml               # Infrastructure-as-Code SAM Template
 │   ├── .env                        # Local SAM environment variables
 │   ├── package.json                # Dependencies (dotenv, pg)
+│   ├── database/
+│   │   └── schema.sql              # PostgreSQL DDL migration script
 │   └── src/
 │       ├── app.js                  # AWS Lambda entrypoint router
 │       ├── db.js                   # PostgreSQL connection pool
-│       ├── e2e_integration_test.js # E2E automated test suite
 │       └── services/
 │           ├── csvParser.js        # CSV parsing & 7 cleaning rules
 │           ├── ingestionService.js # Atomic PostgreSQL transaction batch store
@@ -186,6 +204,7 @@ EarthRe-SLA-Monitor/
 │           └── logsService.js      # Paginated monitoring logs search engine
 ├── frontend/                       # React 19 + Vite 6 Dashboard
 │   ├── .env                        # Frontend API base URL
+│   ├── vercel.json                 # Vercel SPA deployment configuration
 │   ├── package.json                # React & Tailwind CSS dependencies
 │   └── src/
 │       ├── App.jsx                 # Dashboard overview & metrics cards
@@ -193,7 +212,5 @@ EarthRe-SLA-Monitor/
 │       └── components/
 │           ├── CsvUploader.jsx     # Interactive CSV file upload dropzone
 │           └── LogsTable.jsx       # Filterable monitoring check logs table
-├── database/
-│   └── schema.sql                  # PostgreSQL DDL script
 └── sample_data/                    # EarthRe official CSV dataset files
 ```
