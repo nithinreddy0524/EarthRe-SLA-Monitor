@@ -36,7 +36,8 @@ CREATE TABLE monitoring_checks (
     region VARCHAR(50) NOT NULL,
     is_valid BOOLEAN DEFAULT TRUE NOT NULL,
     validation_errors TEXT, -- NULL or comma-separated validation error codes
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT unique_check_record UNIQUE (service_id, timestamp, agent, region)
 );
 
 -- 5. Performance Indexes for SLA Aggregations & Log Filters

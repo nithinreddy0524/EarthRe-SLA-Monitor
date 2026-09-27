@@ -1,7 +1,7 @@
 /**
  * EarthRe Database Ingestion Service
- * Handles PostgreSQL batch transactions, inserting upload_batches metadata
- * and bulk inserting cleaned monitoring_checks records.
+ * Handles PostgreSQL batch transactions with multi-layer deduplication
+ * to guarantee zero SQL constraint violation errors.
  */
 
 const { pool } = require('../db');
@@ -15,30 +15,78 @@ async function ingestCSVBatch(filename, csvContent) {
     try {
         await client.query('BEGIN');
 
-        // 1. Insert upload_batches record
+        let recordsToInsert = cleanedRecords;
+        let skippedDbDuplicates = 0;
+
+        // 1. Application-Level Pre-Query Deduplication
+        if (cleanedRecords.length > 0) {
+            let minTs = cleanedRecords[0].timestamp;
+            let maxTs = cleanedRecords[0].timestamp;
+
+            cleanedRecords.forEach(r => {
+                if (r.timestamp < minTs) minTs = r.timestamp;
+                if (r.timestamp > maxTs) maxTs = r.timestamp;
+            });
+
+            const existingQuery = `
+                SELECT service_id, timestamp, agent, region
+                FROM monitoring_checks
+                WHERE timestamp >= $1 AND timestamp <= $2;
+            `;
+            const existingRes = await client.query(existingQuery, [minTs, maxTs]);
+
+            const existingDbKeys = new Set();
+            existingRes.rows.forEach(row => {
+                const tsIso = new Date(row.timestamp).toISOString();
+                const key = `${(row.service_id || '').trim().toLowerCase()}|${tsIso}|${(row.agent || '').trim().toLowerCase()}|${(row.region || '').trim().toLowerCase()}`;
+                existingDbKeys.add(key);
+            });
+
+            const filteredRecords = [];
+            cleanedRecords.forEach(record => {
+                const tsIso = new Date(record.timestamp).toISOString();
+                const recordKey = `${(record.service_id || '').trim().toLowerCase()}|${tsIso}|${(record.agent || '').trim().toLowerCase()}|${(record.region || '').trim().toLowerCase()}`;
+
+                if (existingDbKeys.has(recordKey)) {
+                    skippedDbDuplicates++;
+                } else {
+                    existingDbKeys.add(recordKey);
+                    filteredRecords.push(record);
+                }
+            });
+
+            recordsToInsert = filteredRecords;
+        }
+
+        let newlyInsertedCount = 0;
+        const totalDuplicateRows = batchSummary.duplicateRows + skippedDbDuplicates;
+        const processingStatus = totalDuplicateRows > 0 ? 'COMPLETED_WITH_SKIPPED_DUPLICATES' : 'COMPLETED';
+
+        // 2. Insert upload_batches metadata record
         const batchInsertQuery = `
-      INSERT INTO upload_batches (
-        filename, total_rows, valid_rows, invalid_rows, duplicate_rows, processing_status
-      ) VALUES ($1, $2, $3, $4, $5, 'COMPLETED')
-      RETURNING id, filename, uploaded_at, total_rows, valid_rows, invalid_rows, duplicate_rows, processing_status;
-    `;
+            INSERT INTO upload_batches (
+                filename, total_rows, valid_rows, invalid_rows, duplicate_rows, processing_status
+            ) VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, filename, uploaded_at, total_rows, valid_rows, invalid_rows, duplicate_rows, processing_status;
+        `;
 
         const batchResult = await client.query(batchInsertQuery, [
             filename || 'uploaded_data.csv',
             batchSummary.totalRows,
             batchSummary.validRows,
             batchSummary.invalidRows,
-            batchSummary.duplicateRows,
+            totalDuplicateRows,
+            processingStatus,
         ]);
 
         const batchRecord = batchResult.rows[0];
         const batchId = batchRecord.id;
 
-        // 2. Bulk Insert monitoring_checks records in chunks of 500
-        if (cleanedRecords.length > 0) {
+        // 3. Bulk Insert unique recordsToInsert in chunks of 500 with ON CONFLICT DO NOTHING
+        if (recordsToInsert.length > 0) {
             const chunkSize = 500;
-            for (let i = 0; i < cleanedRecords.length; i += chunkSize) {
-                const chunk = cleanedRecords.slice(i, i + chunkSize);
+            for (let i = 0; i < recordsToInsert.length; i += chunkSize) {
+                const chunk = recordsToInsert.slice(i, i + chunkSize);
 
                 const valueRows = [];
                 const params = [];
@@ -64,13 +112,16 @@ async function ingestCSVBatch(filename, csvContent) {
                 });
 
                 const bulkInsertQuery = `
-          INSERT INTO monitoring_checks (
-            batch_id, service_id, service_name, timestamp, status_code,
-            latency_ms, agent, region, is_valid, validation_errors
-          ) VALUES ${valueRows.join(', ')};
-        `;
+                    INSERT INTO monitoring_checks (
+                        batch_id, service_id, service_name, timestamp, status_code,
+                        latency_ms, agent, region, is_valid, validation_errors
+                    ) VALUES ${valueRows.join(', ')}
+                    ON CONFLICT (service_id, timestamp, agent, region) DO NOTHING
+                    RETURNING id;
+                `;
 
-                await client.query(bulkInsertQuery, params);
+                const insertRes = await client.query(bulkInsertQuery, params);
+                newlyInsertedCount += (insertRes.rowCount || 0);
             }
         }
 
@@ -82,11 +133,12 @@ async function ingestCSVBatch(filename, csvContent) {
             filename: batchRecord.filename,
             uploadedAt: batchRecord.uploaded_at,
             totalRows: batchRecord.total_rows,
-            validRows: batchRecord.valid_rows,
-            invalidRows: batchRecord.invalid_rows,
-            duplicateRows: batchRecord.duplicate_rows,
-            processingStatus: batchRecord.processing_status,
-            insertedChecksCount: cleanedRecords.length,
+            validRows: batchSummary.validRows,
+            invalidRows: batchSummary.invalidRows,
+            duplicateRows: totalDuplicateRows,
+            newlyInsertedRows: newlyInsertedCount,
+            skippedDuplicatesCount: skippedDbDuplicates,
+            processingStatus,
         };
     } catch (error) {
         await client.query('ROLLBACK');

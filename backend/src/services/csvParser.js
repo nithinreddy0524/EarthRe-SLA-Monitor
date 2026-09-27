@@ -1,7 +1,7 @@
 /**
  * EarthRe SLA Monitoring Data Cleaning & Parsing Service
  * Normalizes timestamps, converts latency to ms, handles invalid HTTP codes,
- * flags negative/missing latency, and deduplicates exact duplicate rows.
+ * flags negative/missing latency, and deduplicates composite key rows.
  */
 
 function parseAndCleanCSV(csvContent) {
@@ -24,6 +24,7 @@ function parseAndCleanCSV(csvContent) {
     }
 
     const seenExactRows = new Set();
+    const seenCompositeKeys = new Set();
     const cleanedRecords = [];
 
     let totalRows = 0;
@@ -37,10 +38,10 @@ function parseAndCleanCSV(csvContent) {
 
         totalRows++;
 
-        // 1. Exact Duplicate Row Check
+        // 1. Exact Duplicate Raw Line Check
         if (seenExactRows.has(rawLine)) {
             duplicateRows++;
-            continue; // Skip inserting exact duplicate row
+            continue;
         }
         seenExactRows.add(rawLine);
 
@@ -59,7 +60,6 @@ function parseAndCleanCSV(csvContent) {
             isValid = false;
             validationErrors.push('MISSING_TIMESTAMP');
         } else if (/^\d+$/.test(rawTs)) {
-            // Unix epoch timestamp (seconds)
             const dateObj = new Date(parseInt(rawTs, 10) * 1000);
             if (isNaN(dateObj.getTime())) {
                 isValid = false;
@@ -77,7 +77,22 @@ function parseAndCleanCSV(csvContent) {
             }
         }
 
-        // 3. HTTP Status Code Validation (HTTP 999 vs 200/500/502/503)
+        const normalizedTs = parsedTimestamp || new Date().toISOString();
+
+        // 3. Normalized Composite Key Deduplication within the CSV file
+        // Prevents PostgreSQL multi-row INSERT from conflicting with itself
+        const normSvcId = (row.service_id || '').trim().toLowerCase();
+        const normAgent = (row.agent || 'unknown').trim().toLowerCase();
+        const normRegion = (row.region || 'ap-south-1').trim().toLowerCase();
+        const compositeKey = `${normSvcId}|${normalizedTs}|${normAgent}|${normRegion}`;
+
+        if (seenCompositeKeys.has(compositeKey)) {
+            duplicateRows++;
+            continue;
+        }
+        seenCompositeKeys.add(compositeKey);
+
+        // 4. HTTP Status Code Validation (HTTP 999 vs 200/500/502/503)
         let statusCode = parseInt(row.status_code, 10);
         if (isNaN(statusCode)) {
             isValid = false;
@@ -90,7 +105,7 @@ function parseAndCleanCSV(csvContent) {
             validationErrors.push('INVALID_STATUS_CODE');
         }
 
-        // 4. Latency Normalization & Validation (Seconds vs MS, Missing, Negative)
+        // 5. Latency Normalization & Validation (Seconds vs MS, Missing, Negative)
         let latencyMs = null;
         const rawLatency = row.latency;
         const unit = (row.latency_unit || 'ms').toLowerCase();
@@ -100,18 +115,14 @@ function parseAndCleanCSV(csvContent) {
             if (isNaN(latNum)) {
                 validationErrors.push('INVALID_LATENCY_FORMAT');
             } else if (latNum < 0) {
-                // Negative latency
                 latencyMs = null;
                 validationErrors.push('INVALID_LATENCY_NEGATIVE');
             } else if (unit === 's') {
-                // Convert seconds to milliseconds
                 latencyMs = Math.round(latNum * 1000);
             } else {
-                // Milliseconds
                 latencyMs = Math.round(latNum);
             }
         } else {
-            // Missing latency: Keep NULL
             latencyMs = null;
         }
 
@@ -122,13 +133,13 @@ function parseAndCleanCSV(csvContent) {
         }
 
         cleanedRecords.push({
-            service_id: row.service_id,
-            service_name: row.service_name,
-            timestamp: parsedTimestamp || new Date().toISOString(),
+            service_id: row.service_id.trim(),
+            service_name: row.service_name.trim(),
+            timestamp: normalizedTs,
             status_code: statusCode || 0,
             latency_ms: latencyMs,
-            agent: row.agent || 'unknown',
-            region: row.region || 'ap-south-1',
+            agent: (row.agent || 'unknown').trim(),
+            region: (row.region || 'ap-south-1').trim(),
             is_valid: isValid,
             validation_errors: validationErrors.length > 0 ? validationErrors.join(', ') : null,
         });

@@ -1,6 +1,7 @@
 /**
  * EarthRe Monitoring Logs Query Service
- * Returns paginated, filterable monitoring check logs with search and audit flags.
+ * Returns paginated, filterable monitoring check logs with search, audit flags,
+ * and dynamically queried filter options from PostgreSQL.
  */
 
 const { query } = require('../db');
@@ -13,6 +14,8 @@ async function getMonitoringLogs(queryParams = {}) {
         agent,
         region,
         search,
+        start_date,
+        end_date,
         limit = 50,
         page = 1,
     } = queryParams;
@@ -56,6 +59,19 @@ async function getMonitoringLogs(queryParams = {}) {
         paramIndex++;
     }
 
+    if (start_date && start_date.trim() !== '') {
+        whereConditions.push(`timestamp >= $${paramIndex}`);
+        params.push(start_date.trim());
+        paramIndex++;
+    }
+
+    if (end_date && end_date.trim() !== '') {
+        const formattedEndDate = end_date.includes('T') ? end_date : `${end_date}T23:59:59.999Z`;
+        whereConditions.push(`timestamp <= $${paramIndex}`);
+        params.push(formattedEndDate);
+        paramIndex++;
+    }
+
     if (search && search.trim() !== '') {
         whereConditions.push(`(service_id ILIKE $${paramIndex} OR service_name ILIKE $${paramIndex} OR agent ILIKE $${paramIndex} OR region ILIKE $${paramIndex} OR validation_errors ILIKE $${paramIndex})`);
         params.push(`%${search.trim()}%`);
@@ -64,12 +80,12 @@ async function getMonitoringLogs(queryParams = {}) {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-    // Count total matching records
+    // 1. Count total matching records
     const countSql = `SELECT COUNT(*)::int as total FROM monitoring_checks ${whereClause};`;
     const countRes = await query(countSql, params);
     const totalCount = countRes.rows[0].total;
 
-    // Query paginated data
+    // 2. Query paginated data
     const dataSql = `
     SELECT
       id,
@@ -93,10 +109,28 @@ async function getMonitoringLogs(queryParams = {}) {
     const queryParamsWithPagination = [...params, parsedLimit, offset];
     const dataRes = await query(dataSql, queryParamsWithPagination);
 
+    // 3. Dynamically query available services and status codes in database for filters
+    const availableServicesRes = await query(`
+        SELECT DISTINCT service_id, service_name
+        FROM monitoring_checks
+        ORDER BY service_name ASC;
+    `);
+
+    const availableStatusCodesRes = await query(`
+        SELECT DISTINCT status_code
+        FROM monitoring_checks
+        ORDER BY status_code ASC;
+    `);
+
     const totalPages = Math.ceil(totalCount / parsedLimit) || 1;
 
     return {
         data: dataRes.rows,
+        availableServices: availableServicesRes.rows.map(r => ({
+            serviceId: r.service_id,
+            serviceName: r.service_name,
+        })),
+        availableStatusCodes: availableStatusCodesRes.rows.map(r => r.status_code),
         pagination: {
             totalCount,
             totalPages,

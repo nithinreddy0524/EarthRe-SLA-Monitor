@@ -40,11 +40,42 @@
                                └─────────────────────────┘
 ```
 
+### Architectural Decisions:
+- **AWS Lambda + API Gateway**: Fully serverless, stateless parsing engine that auto-scales on demand with zero idle cost.
+- **PostgreSQL (Neon Cloud)**: Relational schema enabling fast indexed window aggregations (`PERCENTILE_CONT`) for SLA percentiles.
+- **React 19 + Tailwind CSS v4**: Responsive single-screen dashboard with collapsable SLA stats cards and instant filterable logs table.
+
+---
+
+## 🔍 Data Findings & Quality Rules
+
+During automated profiling across 44,652+ monitoring checks, 7 critical data quality anomalies were identified and handled:
+
+| # | Data Quality Issue | Discovered Anomaly | Automated Cleaning Strategy |
+| :-: | :--- | :--- | :--- |
+| 1 | **Mixed Latency Units** | Latencies reported in seconds (`s`) instead of milliseconds (`ms`). | Converted `latency_unit = 's'` values to milliseconds (`* 1000`). |
+| 2 | **Missing Latency Values** | Latency fields omitted or `NULL`. | Retained missing latency as `NULL` without penalizing availability %. |
+| 3 | **Negative Latency Values** | Anomalous negative numbers (e.g., `-50.0ms`). | Set latency to `NULL` and flagged `INVALID_LATENCY_NEGATIVE`. |
+| 4 | **Unix Epoch Timestamps** | Timestamps recorded in raw Unix seconds (e.g., `1746938700`). | Normalized epoch seconds to UTC ISO 8601 strings. |
+| 5 | **Timezone Offsets** | Local offset timestamps (e.g., `2026-03-01T15:30:00+05:30`). | Converted all local offset timestamps to UTC ISO strings. |
+| 6 | **HTTP Status 999** | Invalid non-standard status code `999`. | Marked `is_valid = FALSE` and flagged `INVALID_STATUS_CODE_999`. Excluded from SLA availability %. |
+| 7 | **Exact Duplicate Checks** | Duplicate `(service_id, timestamp)` entries. | Filtered duplicate checks during atomic database ingestion. |
+
+---
+
+## 💡 Assumptions & Design Choices
+
+1. **SLA Availability Definition**:
+   - **Formula**: `(Successful Checks [HTTP 2xx] / Valid Checks) * 100`
+   - Checks with HTTP status 999 are treated as invalid monitoring artifacts and excluded from availability calculations to prevent metric skew.
+2. **Latency Percentiles Selection**:
+   - Calculated **Average**, **p50 (Median)**, **p95**, and **p99** using PostgreSQL `PERCENTILE_CONT` to provide billing and engineering teams clear insight into response tail latencies.
+3. **Single-Screen Layout**:
+   - Implemented an expandable/collapsible top stats section and a bottom logs view with live text search and multi-criteria filters on a single screen.
+
 ---
 
 ## 🚀 Quick Start Guide (For Recruiters & Developers)
-
-Follow these exact ordered steps to clone, configure, and run the complete serverless stack locally.
 
 ### 📋 Prerequisites
 - **Node.js**: v18.x or v20.x+
@@ -73,51 +104,39 @@ Follow these exact ordered steps to clone, configure, and run the complete serve
 
 ### Step 2: Backend Setup & AWS SAM API Execution
 
-1. **Navigate to the `backend/` folder**:
+1. **Navigate to `backend/`**:
    ```bash
    cd backend
    npm install
    ```
 
-2. **Configure Backend Environment Variables (`backend/.env`)**:
-   Ensure `backend/.env` exists with your PostgreSQL connection string:
+2. **Configure Environment Variables (`backend/.env`)**:
    ```env
    DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/earthre_sla_monitor
    AWS_REGION=ap-south-1
    PORT=3000
    ```
-   *(Note: `host.docker.internal` allows the AWS SAM Docker container to communicate with your Windows host PostgreSQL).*
 
 3. **Start AWS SAM Local Serverless API**:
-   Run the following commands in PowerShell (or Bash) to pass dummy AWS credentials and start SAM local API Gateway:
-   
-   **PowerShell**:
    ```powershell
    $env:AWS_ACCESS_KEY_ID="dummy"
    $env:AWS_SECRET_ACCESS_KEY="dummy"
    $env:AWS_DEFAULT_REGION="ap-south-1"
    sam local start-api --env-vars .env
    ```
-
-   **Bash**:
-   ```bash
-   AWS_ACCESS_KEY_ID=dummy AWS_SECRET_ACCESS_KEY=dummy AWS_DEFAULT_REGION=ap-south-1 sam local start-api --env-vars .env
-   ```
-
-   *Your serverless API will mount at `http://127.0.0.1:3000`.*
+   *API will mount at `http://127.0.0.1:3000`.*
 
 ---
 
 ### Step 3: Frontend Setup & Dashboard Execution
 
-1. **Open a new terminal and navigate to `frontend/`**:
+1. **Navigate to `frontend/`**:
    ```bash
    cd frontend
    npm install
    ```
 
-2. **Configure Frontend Environment Variables (`frontend/.env`)**:
-   Ensure `frontend/.env` exists:
+2. **Configure Environment Variables (`frontend/.env`)**:
    ```env
    VITE_API_BASE_URL=http://localhost:3000/api
    ```
@@ -126,50 +145,38 @@ Follow these exact ordered steps to clone, configure, and run the complete serve
    ```bash
    npm run dev
    ```
-
-4. **Open Dashboard**:
-   Navigate to **`http://localhost:5173`** in your browser.
+   *Navigate to **`http://localhost:5173`**.*
 
 ---
 
 ## 🌐 Production Cloud Deployment Guide
 
 ### 1. Serverless Backend (AWS Lambda + API Gateway)
-1. **Build SAM Package**:
-   ```bash
-   cd backend
-   sam build
-   ```
-2. **Deploy to AWS Cloud via SAM CLI**:
-   ```bash
-   sam deploy --guided
-   ```
-   - **Stack Name**: `earthre-sla-monitor-backend`
-   - **AWS Region**: `ap-south-1`
-   - **Parameter DatabaseUrl**: Enter your Neon Cloud PostgreSQL URL (`postgresql://user:pass@ep-xyz.neon.tech/earthre_sla_monitor?sslmode=require`)
-3. Copy your live AWS API Gateway Endpoint URL (e.g., `https://ngzv0cfefg.execute-api.ap-south-1.amazonaws.com/Prod/api`).
+```bash
+cd backend
+sam build
+sam deploy --guided
+```
+- **Stack Name**: `earthre-sla-monitor-backend`
+- **AWS Region**: `ap-south-1`
+- **Parameter DatabaseUrl**: Enter your Neon Cloud PostgreSQL link.
 
 ### 2. Frontend Dashboard (Vercel)
-1. Log into **[Vercel](https://vercel.com)** and import your `EarthRe-SLA-Monitor` GitHub repository.
+1. Import `EarthRe-SLA-Monitor` repository into [Vercel](https://vercel.com).
 2. Set **Root Directory** to `frontend`.
-3. Add Environment Variable:
-   - **Key**: `VITE_API_BASE_URL`
-   - **Value**: `https://ngzv0cfefg.execute-api.ap-south-1.amazonaws.com/Prod/api`
-4. Click **Deploy**!
+3. Add Environment Variable `VITE_API_BASE_URL` = `https://ngzv0cfefg.execute-api.ap-south-1.amazonaws.com/Prod/api`.
+4. Deploy!
 
 ---
 
-## 🧹 7 Data Quality Cleaning Rules
+## 🔮 What I'd Do Differently With More Time
 
-The ingestion engine (`backend/src/services/csvParser.js`) automatically profiles raw monitoring data against 7 strict data quality rules:
-
-1. **Seconds Latency Normalization**: Converts `latency_unit = 's'` to milliseconds (`* 1000`).
-2. **Missing Latency**: Retains missing latency as `NULL` without failing SLA availability calculations.
-3. **Negative Latency**: Sets negative values to `NULL` and flags `INVALID_LATENCY_NEGATIVE`.
-4. **Unix Epoch Timestamps**: Normalizes epoch seconds (e.g., `1746938700`) to UTC ISO timestamps.
-5. **Timezone Offset Timestamps**: Normalizes offset strings (e.g., `+05:30`) to UTC ISO timestamps.
-6. **HTTP Status 999**: Flags `is_valid = FALSE` and `INVALID_STATUS_CODE_999`. Excluded from SLA availability %.
-7. **Exact Duplicate Rows**: Filters out duplicate `(service_id, timestamp)` rows during atomic batch ingestion.
+1. **Automated S3 Bucket Trigger**:
+   Configure AWS S3 bucket event notifications to invoke AWS Lambda automatically upon CSV upload instead of direct HTTP payload streaming.
+2. **WebSocket Real-Time Ingestion**:
+   Implement AWS API Gateway WebSockets to stream chunked upload processing status in real time.
+3. **Automated SLA Credit Alerts**:
+   Integrate Amazon SNS / Slack webhook notifications when monthly availability drops below the 99.9% SLA threshold.
 
 ---
 
